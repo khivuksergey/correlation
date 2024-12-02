@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	testKey = "correlation-id"
+	testKey = "Correlation-Id"
 	testId  = "mock-correlation-id"
 )
 
@@ -34,7 +34,7 @@ func TestMiddleware(t *testing.T) {
 	setup()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		correlationID, _ := r.Context().Value(Key()).(string)
+		correlationID := Id(r.Context())
 		_, _ = w.Write([]byte(correlationID))
 	})
 
@@ -74,14 +74,14 @@ func TestMiddleware(t *testing.T) {
 func TestEchoMiddleware(t *testing.T) {
 	setup()
 
-	e := echo.New()
-
 	handler := func(c echo.Context) error {
-		correlationID := c.Get(testKey).(string)
+		correlationID := IdFromEcho(c)
 		return c.String(http.StatusOK, correlationID)
 	}
 
-	e.GET("/", handler, EchoMiddleware)
+	e := echo.New()
+	e.Use(EchoMiddleware)
+	e.GET("/", handler)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,6 +95,7 @@ func TestEchoMiddleware(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.expectedHeader, req.Header.Get(testKey))
 			assert.Equal(t, tt.expectedHeader, rec.Header().Get(testKey))
 			assert.Equal(t, tt.expectedBody, rec.Body.String())
 		})
@@ -112,7 +113,7 @@ func TestGinMiddleware(t *testing.T) {
 	r.Use(GinMiddleware)
 
 	r.GET("/", func(c *gin.Context) {
-		correlationID := c.GetString(key)
+		correlationID := Id(c)
 		c.String(http.StatusOK, correlationID)
 	})
 
@@ -127,6 +128,7 @@ func TestGinMiddleware(t *testing.T) {
 			r.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.expectedHeader, req.Header.Get(testKey))
 			assert.Equal(t, tt.expectedHeader, rec.Header().Get(testKey))
 			assert.Equal(t, tt.expectedBody, rec.Body.String())
 		})

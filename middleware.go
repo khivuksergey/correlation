@@ -5,12 +5,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // Middleware is an HTTP middleware that checks the request headers for an existing correlation ID.
 // If the correlation ID is not present, it generates a new one. The generated or retrieved
-// correlation ID is then set in the request context and response headers, allowing downstream
+// correlation ID is then set in the request context, request and response headers, allowing downstream
 // handlers to access and propagate the correlation ID throughout the request chain.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -19,6 +19,7 @@ func Middleware(next http.Handler) http.Handler {
 			id = generate()
 		}
 		r = r.WithContext(context.WithValue(r.Context(), key, id))
+		r.Header.Set(key, id)
 		w.Header().Set(key, id)
 		next.ServeHTTP(w, r)
 	})
@@ -26,7 +27,7 @@ func Middleware(next http.Handler) http.Handler {
 
 // EchoMiddleware is an Echo framework middleware that checks the request headers for an existing
 // correlation ID. If the correlation ID is missing, it generates a new one. The correlation ID
-// is then set both in the Echo context and the response headers, ensuring that it is available
+// is then set both in the Echo context and the request and response headers, ensuring that it is available
 // for downstream handlers and can be propagated across services.
 func EchoMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -35,6 +36,7 @@ func EchoMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			id = generate()
 		}
 		c.Set(key, id)
+		c.Request().Header.Set(key, id)
 		c.Response().Header().Set(key, id)
 		return next(c)
 	}
@@ -50,6 +52,7 @@ func GinMiddleware(c *gin.Context) {
 		id = generate()
 	}
 	c.Set(key, id)
+	c.Request.Header.Set(key, id)
 	c.Writer.Header().Set(key, id)
 	c.Next()
 }

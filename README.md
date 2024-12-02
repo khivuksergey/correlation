@@ -24,13 +24,13 @@ You can use the middleware with the standard `net/http` package to automatically
 package main
 
 import (
-    "github.com/khivuksergey/correlation"
     "net/http"
+    "github.com/khivuksergey/correlation"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
     correlationID := r.Header.Get(correlation.Key())
-    //or use helper function to retrieve id from context
+    // or use helper function to retrieve id from context
     correlationID = correlation.Id(r.Context())
     w.Write([]byte(correlationID))
 }
@@ -57,7 +57,7 @@ func main() {
     r.Use(correlation.GinMiddleware)
     r.GET("/", func(c *gin.Context) {
         correlationID := c.GetString(correlation.Key()) 
-        //or use helper function to retrieve id from context
+        // or use helper function to retrieve id from context
         correlationID = correlation.Id(c)
         c.String(http.StatusOK, correlationID)
     })
@@ -81,8 +81,8 @@ func main() {
     e.Use(correlation.EchoMiddleware)
     e.GET("/", func(c echo.Context) error {
         correlationID := c.Get(correlation.Key()).(string)
-        //or use helper function to retrieve id from context
-        correlationID = correlation.Id(c)
+        // or use helper function to retrieve id from context
+        correlationID = correlation.IdFromEcho(c)
         return c.String(http.StatusOK, correlationID)
     })
     e.Start(":8082")
@@ -114,7 +114,7 @@ correlation.Default()
 ```
 
 ### `Key() string`
-Returns the current correlation ID header key.
+Returns the current correlation ID header key. Default is `X-Correlation-Id`.
 
 ```go
 key := correlation.Key()
@@ -126,4 +126,15 @@ Retrieves the correlation ID from the provided context. Returns an empty string 
 ```go
 c := context.WithValue(context.Background(), correlation.Key(), "correlation-id")
 id := correlation.Id(c)
+```
+
+### `IdFromEcho(c echo.Context) string`
+Retrieves the correlation ID from the provided echo.Context. Returns an empty string if the ID is not found or is not a string.
+
+```go
+e := echo.New()
+req := httptest.NewRequest(http.MethodGet, "/", nil)
+rec := httptest.NewRecorder()
+c := e.NewContext(req, rec)
+id := correlation.IdFromEcho(c)
 ```
